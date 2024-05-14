@@ -38,7 +38,7 @@ def transfer_data():
 
         # Insertar los datos en Oracle
         for row in data:
-            count++1
+            count += 1
             if primer_iteracion:
                 cursor_oracle.execute(
                     "TRUNCATE TABLE MAIN_RRHH.ATTRITION_ADMONITION")
