@@ -32,19 +32,36 @@ def transfer_data():
         conn_oracle = cx_Oracle.connect(
             user=f'{config("DBORACLE_USERNAME")}', password=f'{config("DBORACLE_PASSWORD")}', dsn=dsn_tns)
 
-        cursor_oracle = conn_oracle.cursor()
-        primer_iteracion = True
+        separacion10K = 0
         count = 0
+        query = []
+
+        # Acumulador de queries como una cadena
+        all_queries = ''
 
         # Insertar los datos en Oracle
         for row in data:
+            if count % 10000 == 0:
+                separacion10K += 1
+                count = 0
             count += 1
-            if primer_iteracion:
-                cursor_oracle.execute(
-                    "TRUNCATE TABLE MAIN_RRHH.ATTRITION_ADMONITION")
+            # Convertir los valores de la fila a strings y unirlos con comas
+            # Convertir los valores de la fila a strings y unirlos con comas
+            values_str = ",".join(map(lambda x: f"'{x}'", row))
+            query = f"INSERT INTO MAIN_RRHH.ATTRITION_ADMONITION VALUES ({values_str}); "
+            # Agregar la consulta a la lista de queries
+            all_queries[separacion10K] = all_queries[separacion10K] + query
 
-            print(f'Linea {count}')
-            cursor_oracle.execute("INSERT INTO MAIN_RRHH.ATTRITION_ADMONITION (CODIGO, CUENTA, INGRESO, ESTATUS, EGRESO, GRABACION, BAJA, PUESTO, LUGAR, JERARQUIA, PAIS, NOMBRE, SITE, CODIGOSUPERVISOR, NOMBRESUPERVISOR, CODIGOMANAGER, NOMBREMANAGER, DPI, FECHA_NACIMIENTO, SEXO, ID_PUESTO, LOGIN_NAME, CONEXION, SUELDO_MENSUAL, BONIFICACION, ID_UNIDAD, UNIDAD, AFILIACION_IGSS, NOMBRE1, NOMBRE2, APELLIDO1, APELLIDO2, Id_centro, Email, Telefono, Fecha_Contrato_Permanente, comp_no_habitual_hnhr, bono_empresa_hnhr, NIT, ESTADO_CIVIL, COD_PAIS, CELULAR, COD_DEPARTAMENTO, COD_MUNICIPIO, DIRECCION_STRING, RAP_ID, id_banco, nombre_banco, tipo_cuenta_bancaria, servicio_militar_inicio, cta_bancaria, servicio_militar_fin, tipo_cuenta_bancaria_nombre, Ingresado_por, apellido_casada, fecha_upd, apellidos_conyuge, profesion, productividad, BENEFICIARIO_PRINCIPAL, PARENTESCO_PRINCIPAL, FECHA_NACIMIENTO_PRINCIPAL, BENEFICIARIO_CONTINGENCIA, PARENTESCO_CONTINGENCIA, FECHA_NACIMIENTO_CONTINGENCIA, NACIONALIDAD, id_centro_costo, centro_costo, cliente, uad_rrhh, tipo_puesto) VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, :27, :28, :29, :30, :31, :32, :33, :34, :35, :36, :37, :38, :39, :40, :41, :42, :43, :44, :45, :46, :47, :48, :49, :50, :51, :52, :53, :54, :55, :56, :57, :58, :59, :60, :61, :62, :63, :64, :65, :66, :67, :68, :69, :70, :71)", row)  # Ajusta esto según la estructura de tu tabla
+        # with open("archivo.txt", "w") as archivo:
+        #     # Escribe el string en el archivo
+        #     archivo.write(all_queries)
+
+        cursor_oracle = conn_oracle.cursor()
+        # Ejecutar todos los queries en una sola transacción
+        # cursor_oracle.execute(
+        #             "TRUNCATE TABLE MAIN_RRHH.ATTRITION_ADMONITION")
+        for i in range(1, separacion10K+1):
+            cursor_oracle.execute(all_queries[i])
 
         # Confirmar la transacción
         conn_oracle.commit()
