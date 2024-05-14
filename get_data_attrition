@@ -3,62 +3,35 @@ import cx_Oracle
 import datetime
 from decouple import config
 
-
 def transfer_data():
     try:
-        # Obtener la fecha y hora actual
         fecha_hora_actual = datetime.datetime.now()
-        print("Inicio del Proceso de actualización:",
-              fecha_hora_actual.strftime("%Y-%m-%d %H:%M:%S"))
+        print("Inicio del Proceso de actualización:", fecha_hora_actual.strftime("%Y-%m-%d %H:%M:%S"))
 
-        # Conexión a SQL Server
-        conn_sql = pyodbc.connect(f'DRIVER={{ODBC Driver 17 for SQL Server}};'
-                                  f'SERVER={config("DB_HOST")};'
-                                  f'DATABASE={config("DB_DATABASE")};'
-                                  f'UID={config("DB_USERNAME")};'
-                                  f'PWD={config("DB_PASSWORD")};'
-                                  )
+        with pyodbc.connect(f'DRIVER={{ODBC Driver 17 for SQL Server}};'
+                            f'SERVER={config("DB_HOST")};'
+                            f'DATABASE={config("DB_DATABASE")};'
+                            f'UID={config("DB_USERNAME")};'
+                            f'PWD={config("DB_PASSWORD")}') as conn_sql:
+            cursor_sql = conn_sql.cursor()
 
-        cursor_sql = conn_sql.cursor()
+            cursor_sql.execute("SELECT * FROM BI_AlliedGlobal.OP.T_AttritionDatos")
+            data = cursor_sql.fetchall()
 
-        # Consulta para obtener los datos
-        cursor_sql.execute("SELECT * FROM BI_AlliedGlobal.OP.T_AttritionDatos")
+        with cx_Oracle.connect(f'{config("DBORACLE_USERNAME")}/{config("DBORACLE_PASSWORD")}@'
+                               f'{config("DBORACLE_HOST")}:{config("DBORACLE_PORT")}/'
+                               f'{config("DBORACLE_SERVICE")}') as conn_oracle:
+            cursor_oracle = conn_oracle.cursor()
 
-        data = cursor_sql.fetchall()
+            cursor_oracle.execute("TRUNCATE TABLE MAIN_RRHH.ATTRITION_ADMONITION")
+            insert_query = "INSERT INTO MAIN_RRHH.ATTRITION_ADMONITION VALUES ({})".format(','.join([':' + str(i+1) for i in range(len(data[0]))]))
 
-        # Conexión a Oracle
-        dsn_tns = cx_Oracle.makedsn(
-            f'{config("DBORACLE_HOST")}', f'{config("DBORACLE_PORT")}', service_name=f'{config("DBORACLE_SERVICE")}')
-        conn_oracle = cx_Oracle.connect(
-            user=f'{config("DBORACLE_USERNAME")}', password=f'{config("DBORACLE_PASSWORD")}', dsn=dsn_tns)
+            cursor_oracle.executemany(insert_query, data)
 
-        cursor_oracle = conn_oracle.cursor()
-        primer_iteracion = True
-        count = 0
+            conn_oracle.commit()
 
-        # Insertar los datos en Oracle
-        for row in data:
-            count += 1
-            if primer_iteracion:
-                cursor_oracle.execute(
-                    "TRUNCATE TABLE MAIN_RRHH.ATTRITION_ADMONITION")
-
-            print(f'Linea {count}')
-            cursor_oracle.execute("INSERT INTO MAIN_RRHH.ATTRITION_ADMONITION (CODIGO, CUENTA, INGRESO, ESTATUS, EGRESO, GRABACION, BAJA, PUESTO, LUGAR, JERARQUIA, PAIS, NOMBRE, SITE, CODIGOSUPERVISOR, NOMBRESUPERVISOR, CODIGOMANAGER, NOMBREMANAGER, DPI, FECHA_NACIMIENTO, SEXO, ID_PUESTO, LOGIN_NAME, CONEXION, SUELDO_MENSUAL, BONIFICACION, ID_UNIDAD, UNIDAD, AFILIACION_IGSS, NOMBRE1, NOMBRE2, APELLIDO1, APELLIDO2, Id_centro, Email, Telefono, Fecha_Contrato_Permanente, comp_no_habitual_hnhr, bono_empresa_hnhr, NIT, ESTADO_CIVIL, COD_PAIS, CELULAR, COD_DEPARTAMENTO, COD_MUNICIPIO, DIRECCION_STRING, RAP_ID, id_banco, nombre_banco, tipo_cuenta_bancaria, servicio_militar_inicio, cta_bancaria, servicio_militar_fin, tipo_cuenta_bancaria_nombre, Ingresado_por, apellido_casada, fecha_upd, apellidos_conyuge, profesion, productividad, BENEFICIARIO_PRINCIPAL, PARENTESCO_PRINCIPAL, FECHA_NACIMIENTO_PRINCIPAL, BENEFICIARIO_CONTINGENCIA, PARENTESCO_CONTINGENCIA, FECHA_NACIMIENTO_CONTINGENCIA, NACIONALIDAD, id_centro_costo, centro_costo, cliente, uad_rrhh, tipo_puesto) VALUES (:1, :2, :3, :4, :5, :6, :7, :8, :9, :10, :11, :12, :13, :14, :15, :16, :17, :18, :19, :20, :21, :22, :23, :24, :25, :26, :27, :28, :29, :30, :31, :32, :33, :34, :35, :36, :37, :38, :39, :40, :41, :42, :43, :44, :45, :46, :47, :48, :49, :50, :51, :52, :53, :54, :55, :56, :57, :58, :59, :60, :61, :62, :63, :64, :65, :66, :67, :68, :69, :70, :71)", row)  # Ajusta esto según la estructura de tu tabla
-
-        # Confirmar la transacción
-        conn_oracle.commit()
-
-        # Cerrar las conexiones
-        cursor_sql.close()
-        conn_sql.close()
-        cursor_oracle.close()
-        conn_oracle.close()
-
-        # Obtener la fecha y hora actual
         fecha_hora_actual = datetime.datetime.now()
-        print("Fin del Proceso de actualización:",
-              fecha_hora_actual.strftime("%Y-%m-%d %H:%M:%S"))
+        print("Fin del Proceso de actualización:", fecha_hora_actual.strftime("%Y-%m-%d %H:%M:%S"))
         print("Transferencia de datos completada exitosamente.")
 
     except pyodbc.Error as sql_err:
