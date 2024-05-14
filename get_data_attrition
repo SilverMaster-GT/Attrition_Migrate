@@ -33,7 +33,7 @@ def transfer_data():
         conn_oracle = cx_Oracle.connect(
             user=f'{config("DBORACLE_USERNAME")}', password=f'{config("DBORACLE_PASSWORD")}', dsn=dsn_tns)
 
-        separacion10K = 1
+        separacion10K = 0
         count = 0
         query = []
 
@@ -42,13 +42,13 @@ def transfer_data():
 
         # Insertar los datos en Oracle
         for row in data:
-            while len(all_queries) < separacion10K:
-                all_queries.append([]) 
-
             if count % 10000 == 0:
                 separacion10K += 1
                 count = 0
             count += 1
+
+            while len(all_queries) < separacion10K:
+                all_queries.append([]) 
 
             # Convertir los valores de la fila a strings y unirlos con comas
             values_str = ",".join(map(lambda x: f"'{x}'", row))
