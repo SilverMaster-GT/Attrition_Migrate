@@ -38,7 +38,7 @@ def transfer_data():
         query = []
 
         # Acumulador de queries como una cadena
-        all_queries = ''
+        all_queries = []
 
         # Insertar los datos en Oracle
         for row in data:
