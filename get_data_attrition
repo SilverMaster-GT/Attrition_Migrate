@@ -1,5 +1,6 @@
 import pyodbc
 import cx_Oracle
+import traceback
 import datetime
 from decouple import config
 
@@ -85,6 +86,7 @@ def transfer_data():
         print("Error al conectar con Oracle:", oracle_err)
 
     except Exception as e:
+        traceback.print_exc()
         print("Error inesperado:", e)
 
 
